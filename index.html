@@ -237,7 +237,7 @@
         import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs, serverTimestamp, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 
-        // Variabili globali fornite dall'ambiente
+        // Variabili globali fornite da Canvas.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -552,3 +552,5 @@
     </script>
 </body>
 </html>
+
+
