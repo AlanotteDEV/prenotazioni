@@ -237,9 +237,10 @@
         import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs, serverTimestamp, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 
-        // Variabili globali fornite da Canvas.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // Variabili globali. Vercel le renderà disponibili tramite le variabili d'ambiente.
+        // Devi impostare VITE_FIREBASE_CONFIG e VITE_APP_ID nel tuo progetto Vercel.
+        const appId = import.meta.env.VITE_APP_ID || (typeof __app_id !== 'undefined' ? __app_id : 'default-app-id');
+        const firebaseConfig = import.meta.env.VITE_FIREBASE_CONFIG ? JSON.parse(import.meta.env.VITE_FIREBASE_CONFIG) : (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {});
         const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Inizializza Firebase
@@ -552,5 +553,3 @@
     </script>
 </body>
 </html>
-
-
