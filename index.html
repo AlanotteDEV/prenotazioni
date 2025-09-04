@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Prenotazioni Fumetteria</title>
+    <!-- Google Fonts per un look in stile fumetto classico -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F5F5F5; /* Bianco sporco */
+            color: #1a1a1a; /* Nero quasi totale */
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        h1, h2, .font-bebas {
+            font-family: 'Bebas Neue', sans-serif;
+            letter-spacing: 2px;
+            color: #1a1a1a;
+        }
+        /* Ombreggiatura rossa solo per l'h1 principale */
+        h1 {
+            text-shadow: 2px 2px 0px #E55B5B;
+        }
+        /* Rimosso ombreggiatura scura per h2 */
+        h2 {
+            color: #E55B5B;
+        }
+        .card {
+            background-color: #ffffff; /* Sfondo bianco */
+            color: #1a1a1a; /* Testo nero */
+            border: 3px solid #1a1a1a;
+            box-shadow: 6px 6px 0px #E55B5B; /* Ombra rossa */
+            transition: transform 0.2s ease;
+        }
+        .card:hover {
+            transform: translate(-3px, -3px);
+            box-shadow: 9px 9px 0px #E55B5B;
+        }
+        /* Stile pulsanti animati */
+        .btn {
+            @apply bg-red-600 hover:bg-red-700 transition duration-300 border-2 border-white;
+            color: #1a1a1a; /* Testo nero */
+            font-weight: bold;
+            box-shadow: 2px 2px 0px #c04b4b; /* Ombra rossa */
+            transition: all 0.2s ease;
+        }
+        .btn:active {
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+        /* Stile pulsante Annulla separato */
+        .btn-cancel {
+            @apply bg-white hover:bg-gray-100 text-gray-900 transition duration-300 border-2 border-white;
+            font-weight: bold;
+            box-shadow: 2px 2px 0px #E55B5B;
+            transition: all 0.2s ease;
+        }
+        .btn-cancel:active {
+            box-shadow: none;
+            transform: translate(2px, 2px);
+        }
+
+        .table-card {
+            cursor: pointer;
+            box-shadow: 4px 4px 0px #1a1a1a;
+            transform: scale(0.9);
+            animation: fadeIn 0.5s ease-in-out forwards;
+        }
+        .table-card:hover {
+            transform: translateY(-5px) scale(1.05) rotate(-2deg);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .table-occupied {
+            background-color: #E55B5B; /* Rosso forte */
+            color: #ffffff;
+            border: 2px solid #1a1a1a;
+            transition: transform 0.2s ease;
+        }
+        .table-available {
+            background-color: #ffffff; /* Bianco */
+            color: #1a1a1a;
+            border: 2px solid #1a1a1a;
+            transition: transform 0.2s ease;
+        }
+        .modal-bg {
+            background-color: #F5F5F5;
+        }
+
+        /* Animazioni CSS */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-container {
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .modal-container.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .btn-delete {
+            @apply bg-red-600 hover:bg-red-700 transition duration-300 border-2 border-white;
+            font-weight: bold;
+            color: #1a1a1a; /* Testo nero */
+            box-shadow: 2px 2px 0px #c04b4b; /* Ombra rossa */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container min-h-screen flex flex-col items-center">
+        <!-- Intestazione e informazioni utente -->
+        <header class="w-full flex flex-col items-center mb-8 p-4 rounded-lg shadow-md bg-red-600">
+            <h1 class="text-4xl sm:text-5xl text-white text-center font-bebas">MANBAGA</h1>
+            <button id="admin-mode-btn" class="mt-2 text-xs text-white underline">Modalità Admin</button>
+        </header>
+
+        <!-- Layout dei tavoli -->
+        <div class="w-full p-6 rounded-lg card mb-8">
+            <h2 class="text-2xl sm:text-3xl text-center mb-6 text-gray-900 font-bebas">STATO DEI TAVOLI</h2>
+            <div id="tables-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Tavoli generati da JavaScript -->
+            </div>
+        </div>
+
+        <!-- Lista delle prenotazioni -->
+        <div class="w-full p-6 rounded-lg card mb-8">
+            <h2 class="text-2xl sm:text-3xl text-center mb-6 text-gray-900 font-bebas">PROSSIME PRENOTAZIONI</h2>
+            <div id="reservations-list">
+                <!-- Prenotazioni generate da JavaScript -->
+            </div>
+        </div>
+
+        <!-- Modale per messaggi -->
+        <div id="message-modal" class="modal-container fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center">
+            <div class="p-6 rounded-lg card text-center modal-bg animate-slideUp">
+                <p id="modal-text" class="text-lg font-bold mb-4 text-gray-900"></p>
+                <button id="modal-close-msg" class="w-full text-black font-bold py-2 rounded-md btn-cancel">CHIUDI</button>
+            </div>
+        </div>
+        
+        <!-- Nuovo modale di conferma per la cancellazione -->
+        <div id="confirmation-modal" class="modal-container fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center">
+            <div class="p-6 rounded-lg card text-center modal-bg animate-slideUp w-11/12 sm:w-2/3 lg:w-1/2">
+                <p class="text-lg font-bold mb-4 text-gray-900">Sei sicuro di voler cancellare questa prenotazione?</p>
+                <div class="flex space-x-4">
+                    <button id="confirm-delete-btn" class="w-full text-black font-bold py-2 rounded-md btn">Sì, cancella</button>
+                    <button id="cancel-delete-btn" class="w-full text-black font-bold py-2 rounded-md btn-cancel">No, tieni</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modale per la prenotazione -->
+        <div id="reservation-modal" class="modal-container fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center">
+            <div class="p-6 rounded-lg card w-11/12 sm:w-2/3 lg:w-1/2 modal-bg animate-slideUp">
+                <h2 id="modal-title" class="text-2xl text-center mb-4 font-bebas text-gray-900">PRENOTA TAVOLO</h2>
+                <form id="reservation-form" class="space-y-4">
+                    <input type="hidden" id="selected-table-id">
+                    <div>
+                        <label for="customer-name" class="block text-sm font-medium text-gray-700 mb-1">Nome e Cognome</label>
+                        <input type="text" id="customer-name" class="w-full p-2 rounded-md bg-white border border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" required>
+                    </div>
+                    <div>
+                        <label for="number-of-people" class="block text-sm font-medium text-gray-700 mb-1">Numero di persone (max 4)</label>
+                        <input type="number" id="number-of-people" class="w-full p-2 rounded-md bg-white border border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" min="1" max="4" required>
+                    </div>
+                    <div class="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
+                        <div class="flex-1">
+                            <label for="reservation-date" class="block text-sm font-medium text-gray-700 mb-1">Data</label>
+                            <input type="date" id="reservation-date" class="w-full p-2 rounded-md bg-white border border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" required>
+                        </div>
+                        <div class="flex-1">
+                            <label for="reservation-time" class="block text-sm font-medium text-gray-700 mb-1">Ora di inizio</label>
+                            <input type="time" id="reservation-time" class="w-full p-2 rounded-md bg-white border border-gray-400 focus:outline-none focus:ring-2 focus:ring-ring-blue-500 text-gray-900" required>
+                        </div>
+                    </div>
+                    <div class="flex space-x-4">
+                        <button type="submit" class="w-full text-black font-bold py-2 rounded-md btn">CONFERMA</button>
+                        <button type="button" id="modal-close-res" class="w-full text-black font-bold py-2 rounded-md btn-cancel">ANNULLA</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Modale per l'autenticazione Admin -->
+        <div id="admin-modal" class="modal-container fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center">
+            <div class="p-6 rounded-lg card w-11/12 sm:w-2/3 lg:w-1/2 modal-bg animate-slideUp">
+                <h2 class="text-2xl text-center mb-4 font-bebas text-gray-900">ACCESSO ADMIN</h2>
+                <form id="admin-form" class="space-y-4">
+                    <div>
+                        <label for="admin-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" id="admin-password" class="w-full p-2 rounded-md bg-white border border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" required>
+                    </div>
+                    <div class="flex space-x-4">
+                        <button type="submit" class="w-full text-black font-bold py-2 rounded-md btn">ACCEDI</button>
+                        <button type="button" id="admin-modal-close" class="w-full text-black font-bold py-2 rounded-md btn-cancel">ANNULLA</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script di gestione -->
+    <script type="module">
+        // Importa i moduli necessari da Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs, serverTimestamp, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+
+        // Variabili globali fornite dall'ambiente
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Inizializza Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        const ADMIN_PASSWORD = 'admin'; // Cambia questa password per la produzione
+        let isAdmin = false;
+
+        // Riferimenti agli elementi DOM
+        const tablesContainer = document.getElementById('tables-container');
+        const reservationsList = document.getElementById('reservations-list');
+        const messageModal = document.getElementById('message-modal');
+        const modalText = document.getElementById('modal-text');
+        const modalCloseMsg = document.getElementById('modal-close-msg');
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+        const reservationModal = document.getElementById('reservation-modal');
+        const reservationForm = document.getElementById('reservation-form');
+        const modalCloseRes = document.getElementById('modal-close-res');
+        const selectedTableId = document.getElementById('selected-table-id');
+        const reservationDate = document.getElementById('reservation-date');
+        const reservationTime = document.getElementById('reservation-time');
+        const customerName = document.getElementById('customer-name');
+        const numberOfPeople = document.getElementById('number-of-people');
+        const adminModeBtn = document.getElementById('admin-mode-btn');
+        const adminModal = document.getElementById('admin-modal');
+        const adminForm = document.getElementById('admin-form');
+        const adminPasswordInput = document.getElementById('admin-password');
+        const adminModalCloseBtn = document.getElementById('admin-modal-close');
+
+
+        // Imposta il numero di tavoli
+        const NUM_TABLES = 8;
+        let authReady = false;
+        let currentUserId = null;
+        let reservations = [];
+        let reservationToDeleteId = null;
+
+        // Funzione per mostrare un messaggio modale (sostituisce alert)
+        const showModalMessage = (message) => {
+            modalText.textContent = message;
+            messageModal.classList.add('visible');
+        };
+
+        modalCloseMsg.addEventListener('click', () => {
+            messageModal.classList.remove('visible');
+        });
+
+        // Chiudi il modale di conferma
+        cancelDeleteBtn.addEventListener('click', () => {
+            confirmationModal.classList.remove('visible');
+            reservationToDeleteId = null;
+        });
+
+        // Chiudi il modale di prenotazione
+        modalCloseRes.addEventListener('click', () => {
+            reservationModal.classList.remove('visible');
+            reservationForm.reset();
+        });
+
+        // Chiudi il modale admin
+        adminModalCloseBtn.addEventListener('click', () => {
+            adminModal.classList.remove('visible');
+            adminForm.reset();
+        });
+
+        // Abilita la modalità admin
+        adminModeBtn.addEventListener('click', () => {
+            adminModal.classList.add('visible');
+        });
+
+        adminForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (adminPasswordInput.value === ADMIN_PASSWORD) {
+                isAdmin = true;
+                adminModal.classList.remove('visible');
+                showModalMessage('Modalità Admin attivata.');
+                renderReservations(); // Rirenderizza le prenotazioni per mostrare i pulsanti di cancellazione
+            } else {
+                showModalMessage('Password errata.');
+                adminForm.reset();
+            }
+        });
+
+        // Autenticazione utente
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUserId = user.uid;
+                // Stampa l'ID utente nella console per facilitare la configurazione dell'admin
+                console.log(`Il tuo ID Utente (Admin) è: ${currentUserId}`);
+                authReady = true;
+                startFirestoreListener();
+            } else {
+                try {
+                    if (authToken) {
+                         await signInWithCustomToken(auth, authToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Errore nell'autenticazione:", error);
+                    showModalMessage("Errore di autenticazione. Riprova più tardi.");
+                }
+            }
+        });
+
+        // Funzione per renderizzare la griglia dei tavoli
+        const renderTables = () => {
+            const now = new Date();
+            tablesContainer.innerHTML = '';
+
+            for (let i = 1; i <= NUM_TABLES; i++) {
+                const tableId = `Tavolo ${i}`;
+                // Controlla se il tavolo è prenotato ora
+                const isReservedNow = reservations.some(res => {
+                    const startTime = new Date(res.startTime);
+                    // Aggiungi una durata di 2 ore per determinare se è occupato in questo momento.
+                    const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
+                    return res.table === tableId && now >= startTime && now <= endTime;
+                });
+
+                const statusColor = isReservedNow ? 'table-occupied' : 'table-available';
+                const statusText = isReservedNow ? 'Prenotato' : 'Disponibile';
+
+                // Crea l'elemento del tavolo
+                const tableDiv = document.createElement('div');
+                tableDiv.classList.add('p-4', 'rounded-lg', 'text-center', 'shadow-md', statusColor, 'table-card');
+                tableDiv.dataset.tableId = tableId; // Salva l'ID del tavolo
+                tableDiv.innerHTML = `
+                    <p class="text-xl font-bold">${tableId}</p>
+                    <p class="text-sm">${statusText}</p>
+                `;
+                tablesContainer.appendChild(tableDiv);
+            }
+        };
+
+        // Funzione per renderizzare la lista delle prenotazioni
+        const renderReservations = () => {
+            if (reservations.length === 0) {
+                reservationsList.innerHTML = '<p class="text-center text-gray-500">Nessuna prenotazione futura.</p>';
+                return;
+            }
+
+            reservationsList.innerHTML = '';
+            // Ordina le prenotazioni dalla più recente alla più vecchia
+            const sortedReservations = reservations.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
+            sortedReservations.forEach(res => {
+                const startDate = new Date(res.startTime);
+                const formattedStartDate = startDate.toLocaleDateString('it-IT');
+                const formattedStartTime = startDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+                const reservationDiv = document.createElement('div');
+                reservationDiv.classList.add('p-4', 'bg-white', 'text-black', 'rounded-lg', 'shadow', 'mb-2', 'flex', 'flex-col', 'sm:flex-row', 'justify-between', 'items-center', 'border-2', 'border-red-800');
+                reservationDiv.innerHTML = `
+                    <div>
+                        <p class="text-lg font-bold">${res.table}</p>
+                        <p class="text-sm">Data: ${formattedStartDate} Ora: ${formattedStartTime}</p>
+                        <p class="text-sm">Cliente: ${res.customerName}, Persone: ${res.numberOfPeople}</p>
+                        <p class="text-sm">Utente: <span class="text-gray-600 text-xs">${res.userId}</span></p>
+                    </div>
+                `;
+                // Aggiungi il pulsante di cancellazione solo se l'utente è in modalità admin
+                if (isAdmin) {
+                     const deleteButton = document.createElement('button');
+                     deleteButton.textContent = 'Cancella';
+                     deleteButton.classList.add('mt-2', 'sm:mt-0', 'py-1', 'px-4', 'rounded', 'btn-delete', 'cancel-btn');
+                     deleteButton.dataset.reservationId = res.id;
+                     reservationDiv.appendChild(deleteButton);
+                }
+                reservationsList.appendChild(reservationDiv);
+            });
+        };
+
+        // Ascolta i cambiamenti nel database in tempo reale
+        const startFirestoreListener = () => {
+            if (!authReady || !currentUserId) {
+                console.log("Tentativo di avviare il listener senza utente autenticato. Ritorno.");
+                return;
+            }
+
+            const collectionPath = `artifacts/${appId}/public/data/reservations`;
+
+            // Interroga tutte le prenotazioni per semplicità
+            const q = query(collection(db, collectionPath));
+
+            onSnapshot(q, (querySnapshot) => {
+                reservations = [];
+                querySnapshot.forEach((doc) => {
+                    reservations.push({ id: doc.id, ...doc.data() });
+                });
+                renderTables();
+                renderReservations();
+            }, (error) => {
+                console.error("Errore nell'ascolto di Firestore:", error);
+                showModalMessage("Errore di connessione al database. Riprova più tardi.");
+            });
+        };
+
+        // Funzione per verificare se l'orario è già occupato
+        const isTimeSlotTaken = (newStartTime, existingReservations) => {
+            return existingReservations.some(res => {
+                const existingStartTime = new Date(res.startTime);
+                // Converte a stringa per ignorare i millisecondi e confrontare solo ora e data
+                return newStartTime.toISOString() === existingStartTime.toISOString();
+            });
+        };
+
+        // Gestione dell'invio del modulo di prenotazione
+        reservationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!authReady) {
+                showModalMessage("L'applicazione non è ancora pronta. Riprova tra un attimo.");
+                return;
+            }
+
+            const table = selectedTableId.value;
+            const date = reservationDate.value;
+            const time = reservationTime.value;
+            const name = customerName.value;
+            const people = parseInt(numberOfPeople.value, 10);
+
+            if (!table || !date || !time || !name || isNaN(people) || people < 1 || people > 4) {
+                showModalMessage("Per favor, compila tutti i campi correttamente. Il numero di persone deve essere tra 1 e 4.");
+                return;
+            }
+
+            const newStartTime = new Date(`${date}T${time}:00`);
+
+            // Filtra le prenotazioni per il tavolo selezionato
+            const tableReservations = reservations.filter(res => res.table === table);
+
+            // Esegui il controllo di sovrapposizione
+            if (isTimeSlotTaken(newStartTime, tableReservations)) {
+                showModalMessage("Questo tavolo è già prenotato in questa fascia oraria. Per favore, scegli un orario diverso.");
+                return;
+            }
+
+            try {
+                // Aggiunge un nuovo documento alla collezione delle prenotazioni
+                await addDoc(collection(db, `artifacts/${appId}/public/data/reservations`), {
+                    table: table,
+                    startTime: newStartTime.toISOString(),
+                    customerName: name,
+                    numberOfPeople: people,
+                    userId: currentUserId,
+                    createdAt: serverTimestamp()
+                });
+                showModalMessage("Prenotazione effettuata con successo!");
+                reservationModal.classList.remove('visible');
+                reservationForm.reset();
+            } catch (error) {
+                console.error("Errore nell'aggiunta della prenotazione:", error);
+                showModalMessage("Si è verificato un errore. Riprova.");
+            }
+        });
+
+        // Aggiungi un listener di eventi per i click sui tavoli
+        tablesContainer.addEventListener('click', (e) => {
+            const tableCard = e.target.closest('.table-card');
+            if (tableCard) {
+                const tableId = tableCard.dataset.tableId;
+                // Imposta l'ID del tavolo selezionato nel campo nascosto del form
+                selectedTableId.value = tableId;
+                document.getElementById('modal-title').textContent = `PRENOTA ${tableId.toUpperCase()}`;
+
+                // Imposta la data e l'ora correnti come valore di default
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                const day = now.getDate().toString().padStart(2, '0');
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+
+                reservationDate.value = `${year}-${month}-${day}`;
+                reservationTime.value = `${hours}:${minutes}`;
+
+                reservationModal.classList.add('visible');
+            }
+        });
+
+        // Ascolta i click sul pulsante "Cancella"
+        reservationsList.addEventListener('click', (e) => {
+            const button = e.target.closest('.cancel-btn');
+            if (button) {
+                reservationToDeleteId = button.dataset.reservationId;
+                confirmationModal.classList.add('visible');
+            }
+        });
+
+        // Funzione per la cancellazione della prenotazione
+        confirmDeleteBtn.addEventListener('click', async () => {
+            if (reservationToDeleteId) {
+                try {
+                    await deleteDoc(doc(db, `artifacts/${appId}/public/data/reservations`, reservationToDeleteId));
+                    showModalMessage("Prenotazione cancellata con successo.");
+                } catch (error) {
+                    console.error("Errore nella cancellazione della prenotazione:", error);
+                    showModalMessage("Si è verificato un errore. Riprova più tardi.");
+                } finally {
+                    confirmationModal.classList.remove('visible');
+                    reservationToDeleteId = null;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
