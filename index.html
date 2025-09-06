@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestione Prenotazioni Fumetteria</title>
+    <title>Gestione Prenotazioni Fumetteria (Locale)</title>
     <!-- Google Fonts per un look in stile fumetto classico -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -231,26 +231,6 @@
 
     <!-- Script di gestione -->
     <script type="module">
-        // Importa i moduli necessari da Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs, serverTimestamp, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-
-        // Variabili globali. Vercel le renderà disponibili tramite le variabili d'ambiente.
-        // Devi impostare VITE_FIREBASE_CONFIG e VITE_APP_ID nel tuo progetto Vercel.
-        const appId = import.meta.env.VITE_APP_ID || (typeof __app_id !== 'undefined' ? __app_id : 'default-app-id');
-        const firebaseConfig = import.meta.env.VITE_FIREBASE_CONFIG ? JSON.parse(import.meta.env.VITE_FIREBASE_CONFIG) : (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {});
-        const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Inizializza Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
-        const ADMIN_PASSWORD = 'admin'; // Cambia questa password per la produzione
-        let isAdmin = false;
-
         // Riferimenti agli elementi DOM
         const tablesContainer = document.getElementById('tables-container');
         const reservationsList = document.getElementById('reservations-list');
@@ -274,11 +254,12 @@
         const adminPasswordInput = document.getElementById('admin-password');
         const adminModalCloseBtn = document.getElementById('admin-modal-close');
 
-
-        // Imposta il numero di tavoli
+        // ----- IMPOSTAZIONI LOCALI -----
+        const ADMIN_PASSWORD = 'admin'; // Cambia questa password se vuoi
         const NUM_TABLES = 8;
-        let authReady = false;
-        let currentUserId = null;
+        const LOCAL_STORAGE_KEY = 'fumetteria_prenotazioni';
+
+        let isAdmin = false;
         let reservations = [];
         let reservationToDeleteId = null;
 
@@ -288,23 +269,36 @@
             messageModal.classList.add('visible');
         };
 
-        modalCloseMsg.addEventListener('click', () => {
-            messageModal.classList.remove('visible');
-        });
+        // Funzione per salvare le prenotazioni nel localStorage
+        const saveReservations = () => {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(reservations));
+            // Dopo aver salvato, ri-disegna la UI per mostrare i cambiamenti
+            renderTables();
+            renderReservations();
+        };
+        
+        // Funzione per caricare le prenotazioni dal localStorage
+        const loadReservations = () => {
+            const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (savedData) {
+                reservations = JSON.parse(savedData);
+            } else {
+                reservations = [];
+            }
+            renderTables();
+            renderReservations();
+        };
 
-        // Chiudi il modale di conferma
+        // Gestione eventi modali e UI
+        modalCloseMsg.addEventListener('click', () => messageModal.classList.remove('visible'));
         cancelDeleteBtn.addEventListener('click', () => {
             confirmationModal.classList.remove('visible');
             reservationToDeleteId = null;
         });
-
-        // Chiudi il modale di prenotazione
         modalCloseRes.addEventListener('click', () => {
             reservationModal.classList.remove('visible');
             reservationForm.reset();
         });
-
-        // Chiudi il modale admin
         adminModalCloseBtn.addEventListener('click', () => {
             adminModal.classList.remove('visible');
             adminForm.reset();
@@ -328,28 +322,6 @@
             }
         });
 
-        // Autenticazione utente
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUserId = user.uid;
-                // Stampa l'ID utente nella console per facilitare la configurazione dell'admin
-                console.log(`Il tuo ID Utente (Admin) è: ${currentUserId}`);
-                authReady = true;
-                startFirestoreListener();
-            } else {
-                try {
-                    if (authToken) {
-                         await signInWithCustomToken(auth, authToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (error) {
-                    console.error("Errore nell'autenticazione:", error);
-                    showModalMessage("Errore di autenticazione. Riprova più tardi.");
-                }
-            }
-        });
-
         // Funzione per renderizzare la griglia dei tavoli
         const renderTables = () => {
             const now = new Date();
@@ -357,21 +329,18 @@
 
             for (let i = 1; i <= NUM_TABLES; i++) {
                 const tableId = `Tavolo ${i}`;
-                // Controlla se il tavolo è prenotato ora
                 const isReservedNow = reservations.some(res => {
                     const startTime = new Date(res.startTime);
-                    // Aggiungi una durata di 2 ore per determinare se è occupato in questo momento.
-                    const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
+                    const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000); // Durata di 2 ore
                     return res.table === tableId && now >= startTime && now <= endTime;
                 });
 
                 const statusColor = isReservedNow ? 'table-occupied' : 'table-available';
                 const statusText = isReservedNow ? 'Prenotato' : 'Disponibile';
 
-                // Crea l'elemento del tavolo
                 const tableDiv = document.createElement('div');
                 tableDiv.classList.add('p-4', 'rounded-lg', 'text-center', 'shadow-md', statusColor, 'table-card');
-                tableDiv.dataset.tableId = tableId; // Salva l'ID del tavolo
+                tableDiv.dataset.tableId = tableId;
                 tableDiv.innerHTML = `
                     <p class="text-xl font-bold">${tableId}</p>
                     <p class="text-sm">${statusText}</p>
@@ -388,8 +357,7 @@
             }
 
             reservationsList.innerHTML = '';
-            // Ordina le prenotazioni dalla più recente alla più vecchia
-            const sortedReservations = reservations.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+            const sortedReservations = [...reservations].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
             sortedReservations.forEach(res => {
                 const startDate = new Date(res.startTime);
@@ -403,10 +371,8 @@
                         <p class="text-lg font-bold">${res.table}</p>
                         <p class="text-sm">Data: ${formattedStartDate} Ora: ${formattedStartTime}</p>
                         <p class="text-sm">Cliente: ${res.customerName}, Persone: ${res.numberOfPeople}</p>
-                        <p class="text-sm">Utente: <span class="text-gray-600 text-xs">${res.userId}</span></p>
                     </div>
                 `;
-                // Aggiungi il pulsante di cancellazione solo se l'utente è in modalità admin
                 if (isAdmin) {
                      const deleteButton = document.createElement('button');
                      deleteButton.textContent = 'Cancella';
@@ -418,48 +384,18 @@
             });
         };
 
-        // Ascolta i cambiamenti nel database in tempo reale
-        const startFirestoreListener = () => {
-            if (!authReady || !currentUserId) {
-                console.log("Tentativo di avviare il listener senza utente autenticato. Ritorno.");
-                return;
-            }
-
-            const collectionPath = `artifacts/${appId}/public/data/reservations`;
-
-            // Interroga tutte le prenotazioni per semplicità
-            const q = query(collection(db, collectionPath));
-
-            onSnapshot(q, (querySnapshot) => {
-                reservations = [];
-                querySnapshot.forEach((doc) => {
-                    reservations.push({ id: doc.id, ...doc.data() });
-                });
-                renderTables();
-                renderReservations();
-            }, (error) => {
-                console.error("Errore nell'ascolto di Firestore:", error);
-                showModalMessage("Errore di connessione al database. Riprova più tardi.");
-            });
-        };
-
         // Funzione per verificare se l'orario è già occupato
-        const isTimeSlotTaken = (newStartTime, existingReservations) => {
-            return existingReservations.some(res => {
+        const isTimeSlotTaken = (table, newStartTime) => {
+            const tableReservations = reservations.filter(res => res.table === table);
+            return tableReservations.some(res => {
                 const existingStartTime = new Date(res.startTime);
-                // Converte a stringa per ignorare i millisecondi e confrontare solo ora e data
-                return newStartTime.toISOString() === existingStartTime.toISOString();
+                return newStartTime.getTime() === existingStartTime.getTime();
             });
         };
 
         // Gestione dell'invio del modulo di prenotazione
-        reservationForm.addEventListener('submit', async (e) => {
+        reservationForm.addEventListener('submit', (e) => {
             e.preventDefault();
-
-            if (!authReady) {
-                showModalMessage("L'applicazione non è ancora pronta. Riprova tra un attimo.");
-                return;
-            }
 
             const table = selectedTableId.value;
             const date = reservationDate.value;
@@ -468,38 +404,32 @@
             const people = parseInt(numberOfPeople.value, 10);
 
             if (!table || !date || !time || !name || isNaN(people) || people < 1 || people > 4) {
-                showModalMessage("Per favor, compila tutti i campi correttamente. Il numero di persone deve essere tra 1 e 4.");
+                showModalMessage("Per favore, compila tutti i campi correttamente. Il numero di persone deve essere tra 1 e 4.");
                 return;
             }
 
             const newStartTime = new Date(`${date}T${time}:00`);
-
-            // Filtra le prenotazioni per il tavolo selezionato
-            const tableReservations = reservations.filter(res => res.table === table);
-
-            // Esegui il controllo di sovrapposizione
-            if (isTimeSlotTaken(newStartTime, tableReservations)) {
+            
+            if (isTimeSlotTaken(table, newStartTime)) {
                 showModalMessage("Questo tavolo è già prenotato in questa fascia oraria. Per favore, scegli un orario diverso.");
                 return;
             }
 
-            try {
-                // Aggiunge un nuovo documento alla collezione delle prenotazioni
-                await addDoc(collection(db, `artifacts/${appId}/public/data/reservations`), {
-                    table: table,
-                    startTime: newStartTime.toISOString(),
-                    customerName: name,
-                    numberOfPeople: people,
-                    userId: currentUserId,
-                    createdAt: serverTimestamp()
-                });
-                showModalMessage("Prenotazione effettuata con successo!");
-                reservationModal.classList.remove('visible');
-                reservationForm.reset();
-            } catch (error) {
-                console.error("Errore nell'aggiunta della prenotazione:", error);
-                showModalMessage("Si è verificato un errore. Riprova.");
-            }
+            const newReservation = {
+                id: 'res_' + Date.now() + Math.random(), // ID unico
+                table: table,
+                startTime: newStartTime.toISOString(),
+                customerName: name,
+                numberOfPeople: people,
+                createdAt: new Date().toISOString()
+            };
+            
+            reservations.push(newReservation);
+            saveReservations(); // Salva e aggiorna la UI
+
+            showModalMessage("Prenotazione effettuata con successo!");
+            reservationModal.classList.remove('visible');
+            reservationForm.reset();
         });
 
         // Aggiungi un listener di eventi per i click sui tavoli
@@ -507,11 +437,9 @@
             const tableCard = e.target.closest('.table-card');
             if (tableCard) {
                 const tableId = tableCard.dataset.tableId;
-                // Imposta l'ID del tavolo selezionato nel campo nascosto del form
                 selectedTableId.value = tableId;
                 document.getElementById('modal-title').textContent = `PRENOTA ${tableId.toUpperCase()}`;
 
-                // Imposta la data e l'ora correnti come valore di default
                 const now = new Date();
                 const year = now.getFullYear();
                 const month = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -536,20 +464,22 @@
         });
 
         // Funzione per la cancellazione della prenotazione
-        confirmDeleteBtn.addEventListener('click', async () => {
+        confirmDeleteBtn.addEventListener('click', () => {
             if (reservationToDeleteId) {
-                try {
-                    await deleteDoc(doc(db, `artifacts/${appId}/public/data/reservations`, reservationToDeleteId));
-                    showModalMessage("Prenotazione cancellata con successo.");
-                } catch (error) {
-                    console.error("Errore nella cancellazione della prenotazione:", error);
-                    showModalMessage("Si è verificato un errore. Riprova più tardi.");
-                } finally {
-                    confirmationModal.classList.remove('visible');
-                    reservationToDeleteId = null;
-                }
+                // Filtra l'array per rimuovere la prenotazione
+                reservations = reservations.filter(res => res.id !== reservationToDeleteId);
+                saveReservations(); // Salva e aggiorna la UI
+
+                showModalMessage("Prenotazione cancellata con successo.");
+                confirmationModal.classList.remove('visible');
+                reservationToDeleteId = null;
             }
         });
+        
+        // --- INIZIALIZZAZIONE ---
+        // Carica i dati all'avvio dell'applicazione
+        loadReservations();
+
     </script>
 </body>
 </html>
