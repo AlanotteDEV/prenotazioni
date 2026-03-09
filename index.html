@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manbaga - Prenotazione Tavoli</title>
+    <title>Manbaga - Gestione Tavoli</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -26,53 +26,62 @@
     <div id="auth-screen" class="min-h-screen flex items-center justify-center p-5">
         <div class="w-full max-w-[400px] p-10 rounded-xl bg-[#0a0a0a] border border-red-500/20">
             <div class="text-center mb-8">
-                <div class="text-[40px] font-black italic tracking-tighter text-white">MAN<span class="text-red-500">B</span>AGA</div>
-                <p id="auth-title" class="text-red-500 text-[10px] tracking-widest font-bold">ACCEDI</p>
+                <div class="text-[40px] font-black italic tracking-tighter text-white uppercase">MAN<span class="text-red-500">B</span>AGA</div>
+                <p id="auth-title" class="text-red-500 text-[10px] tracking-widest font-bold uppercase">Accedi per Prenotare</p>
             </div>
             <div class="grid gap-4">
                 <input type="text" id="reg-nome" class="hidden p-3 rounded bg-white/5 border border-white/10" placeholder="IL TUO NOME">
                 <input type="email" id="email" class="p-3 rounded bg-white/5 border border-white/10" placeholder="EMAIL">
                 <input type="password" id="password" class="p-3 rounded bg-white/5 border border-white/10" placeholder="PASSWORD">
-                <button onclick="handleAuthSubmit()" class="btn-primary p-3 rounded font-bold">ENTRA</button>
-                <button onclick="toggleAuthMode()" class="text-[10px] text-gray-500 uppercase">Cambia modalità</button>
+                <button onclick="handleAuthSubmit()" class="btn-primary p-3 rounded font-bold uppercase text-sm tracking-widest">Entra</button>
+                <button onclick="toggleAuthMode()" class="text-[10px] text-gray-500 uppercase hover:text-red-500 transition">Non hai un account? Registrati</button>
             </div>
         </div>
     </div>
 
     <div id="app-screen" class="hidden">
-        <header class="p-6 border-b border-white/5 bg-black/50 backdrop-blur-md sticky top-0 z-50">
+        <header class="p-6 border-b border-white/5 bg-black/80 backdrop-blur-md sticky top-0 z-50">
             <div class="max-w-6xl mx-auto flex justify-between items-center">
                 <div class="text-xl font-black italic">MAN<span class="text-red-500">B</span>AGA</div>
-                <div id="display-nome" class="text-[10px] text-red-500 font-bold uppercase"></div>
-                <button onclick="logout()" class="text-gray-500"><i data-lucide="log-out" class="w-4 h-4"></i></button>
+                <div class="text-center">
+                    <span id="display-nome" class="text-[10px] text-red-500 font-bold uppercase tracking-widest"></span>
+                </div>
+                <button onclick="logout()" class="text-gray-500 hover:text-red-500 transition"><i data-lucide="log-out" class="w-5 h-5"></i></button>
             </div>
         </header>
 
         <main class="max-w-6xl mx-auto p-6">
-            <div class="flex gap-6 mb-8 border-b border-white/5">
-                <button onclick="switchTab('tavoli')" id="tab-tav" class="tab-btn active pb-4 text-xs font-bold">TAVOLI</button>
-                <button onclick="switchTab('prenotazioni')" id="tab-pre" class="tab-btn pb-4 text-xs font-bold uppercase">Mie Prenotazioni (<span id="count-pre">0</span>)</button>
+            <div class="flex gap-8 mb-8 border-b border-white/5">
+                <button onclick="switchTab('tavoli')" id="tab-tav" class="tab-btn active pb-4 text-xs font-bold tracking-widest uppercase">Mappa Tavoli</button>
+                <button onclick="switchTab('prenotazioni')" id="tab-pre" class="tab-btn pb-4 text-xs font-bold tracking-widest uppercase">Lista Prenotazioni (<span id="count-pre">0</span>)</button>
             </div>
 
-            <div id="view-tavoli">
-                <div id="grid-tavoli" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3"></div>
+            <div id="view-tavoli" class="animate-fade">
+                <div id="grid-tavoli" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4"></div>
             </div>
 
-            <div id="view-prenotazioni" class="hidden">
-                <div id="lista-prenotazioni" class="grid gap-3"></div>
+            <div id="view-prenotazioni" class="hidden animate-fade">
+                <div id="lista-prenotazioni" class="grid gap-4"></div>
             </div>
         </main>
     </div>
 
-    <div id="modal-pren" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+    <div id="modal-pren" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
         <div class="w-full max-w-[350px] p-8 rounded-xl bg-[#0a0a0a] border border-red-500/30">
-            <h2 id="modal-title" class="text-2xl font-bold mb-6">TAVOLO</h2>
+            <h2 id="modal-title" class="text-2xl font-serif mb-2 text-white">TAVOLO</h2>
+            <p class="text-red-500 text-[10px] font-bold tracking-widest uppercase mb-6">Nuova Prenotazione</p>
             <div class="space-y-4">
-                <input type="text" id="p-nome" class="w-full p-3 rounded bg-white/5 border border-white/10" placeholder="Nome Prenotazione">
-                <input type="time" id="p-ora" class="w-full p-3 rounded bg-white/5 border border-white/10">
+                <div>
+                    <label class="text-[9px] text-gray-500 uppercase mb-1 block">Nome Prenotazione</label>
+                    <input type="text" id="p-nome" class="w-full p-3 rounded bg-white/5 border border-white/10 text-sm" placeholder="Es. Mario">
+                </div>
+                <div>
+                    <label class="text-[9px] text-gray-500 uppercase mb-1 block">Orario di Arrivo</label>
+                    <input type="time" id="p-ora" class="w-full p-3 rounded bg-white/5 border border-white/10 text-sm">
+                </div>
                 <div class="flex gap-2 pt-4">
-                    <button onclick="closeModal()" class="flex-1 p-3 text-xs bg-white/5 rounded">ANNULLA</button>
-                    <button onclick="submitPrenotazione()" class="flex-1 btn-primary p-3 text-xs rounded font-bold">CONFERMA</button>
+                    <button onclick="closeModal()" class="flex-1 p-3 text-[10px] font-bold bg-white/5 rounded border border-white/10 uppercase tracking-widest">Annulla</button>
+                    <button onclick="submitPrenotazione()" class="flex-1 btn-primary p-3 text-[10px] font-bold rounded uppercase tracking-widest">Conferma</button>
                 </div>
             </div>
         </div>
@@ -96,7 +105,7 @@
         function toggleAuthMode() {
             isRegistrazione = !isRegistrazione;
             document.getElementById('reg-nome').classList.toggle('hidden', !isRegistrazione);
-            document.getElementById('auth-title').innerText = isRegistrazione ? 'REGISTRATI' : 'ACCEDI';
+            document.getElementById('auth-title').innerText = isRegistrazione ? 'Registrati' : 'Accedi';
         }
 
         function handleAuthSubmit() {
@@ -107,7 +116,7 @@
                     db.ref('utenti/' + r.user.uid).set({ nome: document.getElementById('reg-nome').value });
                 }).catch(e => alert(e.message));
             } else {
-                auth.signInWithEmailAndPassword(email, pass).catch(e => alert("Errore: " + e.message));
+                auth.signInWithEmailAndPassword(email, pass).catch(e => alert("Accesso negato: controlla i dati."));
             }
         }
 
@@ -116,7 +125,7 @@
                 document.getElementById('auth-screen').classList.add('hidden');
                 document.getElementById('app-screen').classList.remove('hidden');
                 db.ref('utenti/' + user.uid).once('value', s => {
-                    document.getElementById('display-nome').innerText = s.val()?.nome || 'Utente';
+                    document.getElementById('display-nome').innerText = "Benvenuto, " + (s.val()?.nome || 'Utente');
                 });
                 db.ref('prenotazioni').on('value', s => render(s.val() || {}));
             } else {
@@ -130,58 +139,95 @@
             const grid = document.getElementById('grid-tavoli');
             grid.innerHTML = '';
             
+            // 1. Rendering della Griglia Tavoli
             for(let i=1; i<=16; i++) {
                 const p = prenotazioni.find(x => x.tavolo == i);
                 const div = document.createElement('div');
-                div.className = `tavolo-item aspect-square rounded-lg flex flex-col items-center justify-center ${p ? 'bg-red-500/20 border-red-500/50' : 'bg-white/5 hover:bg-white/10 cursor-pointer'}`;
-                if(!p) div.onclick = () => { selectedTavolo = i; document.getElementById('modal-title').innerText = 'TAVOLO ' + i; document.getElementById('modal-pren').classList.remove('hidden'); };
+                div.className = `tavolo-item aspect-square rounded-xl flex flex-col items-center justify-center ${p ? 'bg-red-500/10 border-red-500/40' : 'bg-white/5 hover:bg-white/10 cursor-pointer'}`;
                 
-                div.innerHTML = `<span class="text-[8px] text-gray-500">TAV</span><span class="text-xl font-bold">${i}</span><span class="text-[7px] text-red-500">${p ? p.orario : 'LIBERO'}</span>`;
+                if(!p) {
+                    div.onclick = () => { 
+                        selectedTavolo = i; 
+                        document.getElementById('modal-title').innerText = 'TAVOLO ' + i; 
+                        document.getElementById('modal-pren').classList.remove('hidden'); 
+                    };
+                }
+                
+                div.innerHTML = `
+                    <span class="text-[8px] text-gray-500 font-bold uppercase">Table</span>
+                    <span class="text-2xl font-bold ${p ? 'text-red-500' : 'text-white/20'}">${i}</span>
+                    <span class="text-[9px] font-bold ${p ? 'text-white' : 'text-red-500/40'}">${p ? p.orario : 'LIBERO'}</span>
+                `;
                 grid.appendChild(div);
             }
 
-            const mie = prenotazioni.filter(x => x.utenteId === auth.currentUser.uid);
-            document.getElementById('count-pre').innerText = mie.length;
+            // 2. Rendering Lista Globale (Modificabile solo dal proprietario)
+            document.getElementById('count-pre').innerText = prenotazioni.length;
             const lista = document.getElementById('lista-prenotazioni');
-            lista.innerHTML = mie.map(p => `
-                <div class="p-4 bg-white/5 border border-white/10 rounded-lg flex justify-between items-center">
-                    <div><p class="text-xs font-bold">Tavolo ${p.tavolo} - ${p.nome}</p><p class="text-[10px] text-gray-500">${p.orario}</p></div>
-                    <button onclick="cancella('${p.id}')" class="text-red-500 text-xs">ELIMINA</button>
-                </div>
-            `).join('');
+            
+            if (prenotazioni.length === 0) {
+                lista.innerHTML = '<p class="text-center text-gray-600 py-10 uppercase text-[10px] tracking-widest">Nessuna prenotazione attiva</p>';
+            } else {
+                lista.innerHTML = prenotazioni.map(p => {
+                    // CONTROLLO: Sono io il proprietario di questa prenotazione?
+                    const isMia = p.utenteId === auth.currentUser.uid;
+                    
+                    return `
+                        <div class="p-5 bg-white/5 border ${isMia ? 'border-red-500/30' : 'border-white/10'} rounded-xl flex justify-between items-center">
+                            <div>
+                                <p class="text-[10px] text-red-500 font-bold uppercase tracking-tighter mb-1">Tavolo ${p.tavolo} • ${p.orario}</p>
+                                <p class="font-bold text-lg text-white">${p.nome}</p>
+                            </div>
+                            ${isMia ? `
+                                <button onclick="cancella('${p.id}')" class="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            ` : `
+                                <span class="text-[8px] text-gray-600 uppercase font-bold tracking-widest border border-white/5 px-2 py-1 rounded">Sola Lettura</span>
+                            `}
+                        </div>
+                    `;
+                }).join('');
+            }
             lucide.createIcons();
         }
 
         function submitPrenotazione() {
-            const nome = document.getElementById('p-nome').value;
+            const nome = document.getElementById('p-nome').value.trim();
             const ora = document.getElementById('p-ora').value;
-            if(!nome || !ora) return alert("Inserisci nome e ora");
+            if(!nome || !ora) return alert("Inserisci tutti i dati richiesti.");
 
             const id = Date.now();
-            console.log("Tentativo di prenotazione...");
-            
             db.ref('prenotazioni/' + id).set({
-                id, tavolo: selectedTavolo, nome, orario: ora, utenteId: auth.currentUser.uid
+                id, 
+                tavolo: selectedTavolo, 
+                nome, 
+                orario: ora, 
+                utenteId: auth.currentUser.uid
             })
             .then(() => {
-                console.log("Successo!");
                 closeModal();
                 document.getElementById('p-nome').value = '';
+                document.getElementById('p-ora').value = '';
             })
-            .catch(error => {
-                console.error("Errore Firebase:", error);
-                alert("Errore durante la prenotazione: " + error.message);
-            });
+            .catch(e => alert("Errore di sistema. Verifica le regole del database."));
         }
 
         function closeModal() { document.getElementById('modal-pren').classList.add('hidden'); }
+        
         function switchTab(t) {
             document.getElementById('view-tavoli').classList.toggle('hidden', t !== 'tavoli');
             document.getElementById('view-prenotazioni').classList.toggle('hidden', t !== 'prenotazioni');
             document.getElementById('tab-tav').classList.toggle('active', t === 'tavoli');
             document.getElementById('tab-pre').classList.toggle('active', t === 'prenotazioni');
         }
-        function cancella(id) { if(confirm("Cancello?")) db.ref('prenotazioni/'+id).remove(); }
+
+        function cancella(id) { 
+            if(confirm("Vuoi davvero eliminare questa prenotazione?")) {
+                db.ref('prenotazioni/'+id).remove(); 
+            }
+        }
+        
         function logout() { auth.signOut(); }
         lucide.createIcons();
     </script>
