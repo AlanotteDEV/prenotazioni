@@ -4,192 +4,110 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manbaga - Prenotazione Tavoli</title>
-
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://unpkg.com/lucide@latest"></script>
-
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
     <style>
-        body {
-            background-color: #050505;
-            color: #f5f5f5;
-            margin: 0;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .grain {
-            background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" result="noise" /></filter><rect width="400" height="400" fill="%23050505" filter="url(%23noise)" opacity="0.03"/></svg>');
-            background-size: 200px 200px;
-        }
-
-        .font-serif { font-family: 'Playfair Display', serif; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade { animation: fadeIn 0.5s ease-out forwards; }
-
-        .tavolo-item { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .tavolo-item:hover:not(.occupato) { transform: translateY(-5px); border-color: #ef4444 !important; box-shadow: 0 10px 30px rgba(239, 68, 68, 0.2); }
-
-        input, select, textarea {
-            background: rgba(20, 20, 20, 0.8) !important;
-            border: 1px solid rgba(100, 100, 100, 0.3) !important;
-            color: #f5f5f5 !important;
-            outline: none;
-        }
-        input:focus { border-color: #ef4444 !important; }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
-            transition: all 0.2s;
-        }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(239, 68, 68, 0.5); }
-
-        .tab-btn { color: #888; border-bottom: 2px solid transparent; transition: all 0.3s; }
+        body { background-color: #050505; color: #f5f5f5; font-family: 'JetBrains Mono', monospace; }
+        .grain { background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" result="noise" /></filter><rect width="400" height="400" fill="%23050505" filter="url(%23noise)" opacity="0.03"/></svg>'); }
+        .btn-primary { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); transition: all 0.2s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4); }
+        .tavolo-item { transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.1); }
         .tab-btn.active { color: #ef4444; border-bottom: 2px solid #ef4444; }
-
         .hidden { display: none !important; }
     </style>
 </head>
 <body class="grain min-h-screen">
 
     <div id="auth-screen" class="min-h-screen flex items-center justify-center p-5">
-        <div class="w-full max-w-[400px] p-10 rounded-xl animate-fade" style="background: rgba(10, 10, 10, 0.95); border: 1px solid rgba(239, 68, 68, 0.2); backdrop-filter: blur(20px);">
+        <div class="w-full max-w-[400px] p-10 rounded-xl bg-[#0a0a0a] border border-red-500/20">
             <div class="text-center mb-8">
-                <div class="text-[42px] font-black italic tracking-tighter mb-4">
-                    <span class="text-white">MAN</span><span class="text-red-500">B</span><span class="text-white">AGA</span>
-                </div>
-                <p id="auth-title" class="text-red-500 text-xs tracking-widest uppercase font-bold">ACCEDI</p>
+                <div class="text-[40px] font-black italic tracking-tighter text-white">MAN<span class="text-red-500">B</span>AGA</div>
+                <p id="auth-title" class="text-red-500 text-[10px] tracking-widest font-bold">ACCEDI</p>
             </div>
-            <div id="auth-error" class="hidden mb-4 p-3 bg-red-500/10 border border-red-500/30 text-red-500 text-xs rounded"></div>
             <div class="grid gap-4">
-                <input type="text" id="reg-nome" class="hidden p-3 rounded" placeholder="IL TUO NOME">
-                <input type="email" id="email" class="p-3 rounded" placeholder="EMAIL">
-                <input type="password" id="password" class="p-3 rounded" placeholder="PASSWORD">
-                <button onclick="handleAuthSubmit()" id="auth-btn" class="btn-primary p-3 rounded font-bold uppercase tracking-widest text-sm">ACCEDI</button>
-                <button onclick="toggleAuthMode()" class="text-[10px] text-gray-500 hover:text-red-500 transition uppercase tracking-widest">Non hai un account? Registrati</button>
+                <input type="text" id="reg-nome" class="hidden p-3 rounded bg-white/5 border border-white/10" placeholder="IL TUO NOME">
+                <input type="email" id="email" class="p-3 rounded bg-white/5 border border-white/10" placeholder="EMAIL">
+                <input type="password" id="password" class="p-3 rounded bg-white/5 border border-white/10" placeholder="PASSWORD">
+                <button onclick="handleAuthSubmit()" class="btn-primary p-3 rounded font-bold">ENTRA</button>
+                <button onclick="toggleAuthMode()" class="text-[10px] text-gray-500 uppercase">Cambia modalità</button>
             </div>
         </div>
     </div>
 
     <div id="app-screen" class="hidden">
-        <header class="border-b border-[#1a1a1a] p-6 sticky top-0 bg-[#050505]/90 backdrop-blur-md z-40">
+        <header class="p-6 border-b border-white/5 bg-black/50 backdrop-blur-md sticky top-0 z-50">
             <div class="max-w-6xl mx-auto flex justify-between items-center">
-                <div class="text-2xl font-black italic tracking-tighter">MAN<span class="text-red-500">B</span>AGA</div>
-                <div class="text-center hidden md:block">
-                    <p class="text-red-500 text-[10px] tracking-[4px] uppercase font-bold">PRENOTAZIONE TAVOLI</p>
-                    <h1 class="font-serif text-2xl">DISPONIBILITÀ</h1>
-                </div>
-                <div class="flex items-center gap-4">
-                    <span id="display-nome" class="text-xs text-red-500 font-bold uppercase"></span>
-                    <button onclick="logout()" class="p-2 bg-red-500/10 border border-red-500/20 text-red-500 rounded-md hover:bg-red-500/30 transition">
-                        <i data-lucide="log-out" class="w-4 h-4"></i>
-                    </button>
-                </div>
+                <div class="text-xl font-black italic">MAN<span class="text-red-500">B</span>AGA</div>
+                <div id="display-nome" class="text-[10px] text-red-500 font-bold uppercase"></div>
+                <button onclick="logout()" class="text-gray-500"><i data-lucide="log-out" class="w-4 h-4"></i></button>
             </div>
         </header>
 
         <main class="max-w-6xl mx-auto p-6">
-            <div class="flex gap-8 mb-10 border-b border-[#1a1a1a]">
-                <button onclick="switchTab('tavoli')" id="tab-tav" class="tab-btn active pb-4 text-xs font-bold tracking-widest flex items-center gap-2">
-                    <i data-lucide="grid-3x3" class="w-4 h-4"></i> TAVOLI
-                </button>
-                <button onclick="switchTab('prenotazioni')" id="tab-pre" class="tab-btn pb-4 text-xs font-bold tracking-widest flex items-center gap-2">
-                    <i data-lucide="list" class="w-4 h-4"></i> MIE PRENOTAZIONI (<span id="count-pre">0</span>)
-                </button>
+            <div class="flex gap-6 mb-8 border-b border-white/5">
+                <button onclick="switchTab('tavoli')" id="tab-tav" class="tab-btn active pb-4 text-xs font-bold">TAVOLI</button>
+                <button onclick="switchTab('prenotazioni')" id="tab-pre" class="tab-btn pb-4 text-xs font-bold uppercase">Mie Prenotazioni (<span id="count-pre">0</span>)</button>
             </div>
 
-            <div id="view-tavoli" class="animate-fade">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                    <div class="p-6 rounded-lg bg-red-500/5 border border-red-500/20">
-                        <p class="text-[10px] text-red-500 font-bold tracking-widest mb-1 uppercase">Disponibili</p>
-                        <div id="stat-disp" class="text-3xl font-bold">16</div>
-                    </div>
-                    <div class="p-6 rounded-lg bg-white/5 border border-white/10">
-                        <p class="text-[10px] text-gray-500 font-bold tracking-widest mb-1 uppercase">Prenotati</p>
-                        <div id="stat-pren" class="text-3xl font-bold text-gray-400">0</div>
-                    </div>
-                </div>
-                <div id="grid-tavoli" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4"></div>
+            <div id="view-tavoli">
+                <div id="grid-tavoli" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3"></div>
             </div>
 
-            <div id="view-prenotazioni" class="hidden animate-fade">
-                <div id="lista-prenotazioni" class="grid gap-4"></div>
+            <div id="view-prenotazioni" class="hidden">
+                <div id="lista-prenotazioni" class="grid gap-3"></div>
             </div>
         </main>
     </div>
 
-    <div id="modal-pren" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-        <div class="w-full max-w-[400px] p-8 rounded-xl bg-[#0a0a0a] border border-red-500/30 shadow-2xl">
-            <h2 id="modal-title" class="font-serif text-3xl mb-1 text-white">TAVOLO X</h2>
-            <p class="text-red-500 text-[10px] tracking-widest font-bold mb-6 uppercase">Compila i dati</p>
-            
+    <div id="modal-pren" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+        <div class="w-full max-w-[350px] p-8 rounded-xl bg-[#0a0a0a] border border-red-500/30">
+            <h2 id="modal-title" class="text-2xl font-bold mb-6">TAVOLO</h2>
             <div class="space-y-4">
-                <div>
-                    <label class="text-[10px] text-gray-500 block mb-1 uppercase">Nome per la prenotazione</label>
-                    <input type="text" id="p-nome" class="w-full p-3 rounded text-sm" placeholder="Es: Mario Rossi">
-                </div>
-                <div>
-                    <label class="text-[10px] text-gray-500 block mb-1 uppercase">Orario di arrivo</label>
-                    <input type="time" id="p-ora" class="w-full p-3 rounded text-sm">
-                </div>
-                <div class="flex gap-3 mt-8">
-                    <button onclick="closeModal()" class="flex-1 p-3 text-xs bg-white/5 rounded border border-white/10 hover:bg-white/10 transition">ANNULLA</button>
-                    <button onclick="submitPrenotazione()" class="flex-1 btn-primary p-3 text-xs rounded font-bold uppercase tracking-widest">Conferma</button>
+                <input type="text" id="p-nome" class="w-full p-3 rounded bg-white/5 border border-white/10" placeholder="Nome Prenotazione">
+                <input type="time" id="p-ora" class="w-full p-3 rounded bg-white/5 border border-white/10">
+                <div class="flex gap-2 pt-4">
+                    <button onclick="closeModal()" class="flex-1 p-3 text-xs bg-white/5 rounded">ANNULLA</button>
+                    <button onclick="submitPrenotazione()" class="flex-1 btn-primary p-3 text-xs rounded font-bold">CONFERMA</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // CONFIGURAZIONE
         const firebaseConfig = {
             apiKey: "AIzaSyCG0-J2wxZGSz6eDh_E-aAe2uvpTGLmXz0",
             authDomain: "prenotazioninegozio-65eb1.firebaseapp.com",
             projectId: "prenotazioninegozio-65eb1",
             databaseURL: "https://prenotazioninegozio-65eb1-default-rtdb.europe-west1.firebasedatabase.app",
-            storageBucket: "prenotazioninegozio-65eb1.firebasestorage.app",
-            messagingSenderId: "466874129336",
             appId: "1:466874129336:web:fd07925523c35921fe8d4d"
         };
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
-        let isRegistrazione = false;
         let selectedTavolo = null;
+        let isRegistrazione = false;
 
-        // INIZIALIZZAZIONE ICONE
-        lucide.createIcons();
-
-        // GESTIONE AUTH
         function toggleAuthMode() {
             isRegistrazione = !isRegistrazione;
-            document.getElementById('auth-title').innerText = isRegistrazione ? 'REGISTRATI' : 'ACCEDI';
-            document.getElementById('auth-btn').innerText = isRegistrazione ? 'REGISTRATI' : 'ACCEDI';
             document.getElementById('reg-nome').classList.toggle('hidden', !isRegistrazione);
+            document.getElementById('auth-title').innerText = isRegistrazione ? 'REGISTRATI' : 'ACCEDI';
         }
 
         function handleAuthSubmit() {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
-            const nome = document.getElementById('reg-nome').value;
-            const errDiv = document.getElementById('auth-error');
-
-            if (isRegistrazione) {
-                if(!nome) return alert("Inserisci il tuo nome");
-                auth.createUserWithEmailAndPassword(email, pass)
-                    .then(r => db.ref('utenti/' + r.user.uid).set({ nome: nome, email: email }))
-                    .catch(e => { errDiv.innerText = e.message; errDiv.classList.remove('hidden'); });
+            if(isRegistrazione) {
+                auth.createUserWithEmailAndPassword(email, pass).then(r => {
+                    db.ref('utenti/' + r.user.uid).set({ nome: document.getElementById('reg-nome').value });
+                }).catch(e => alert(e.message));
             } else {
-                auth.signInWithEmailAndPassword(email, pass)
-                    .catch(e => { errDiv.innerText = "Credenziali errate o utente inesistente"; errDiv.classList.remove('hidden'); });
+                auth.signInWithEmailAndPassword(email, pass).catch(e => alert("Errore: " + e.message));
             }
         }
 
@@ -200,128 +118,72 @@
                 db.ref('utenti/' + user.uid).once('value', s => {
                     document.getElementById('display-nome').innerText = s.val()?.nome || 'Utente';
                 });
-                
-                // Forza il primo disegno dei tavoli anche se il DB è vuoto
-                renderApp({});
-                
-                // Ascolta il DB in tempo reale
-                db.ref('prenotazioni').on('value', snapshot => {
-                    renderApp(snapshot.val() || {});
-                });
+                db.ref('prenotazioni').on('value', s => render(s.val() || {}));
             } else {
                 document.getElementById('auth-screen').classList.remove('hidden');
                 document.getElementById('app-screen').classList.add('hidden');
             }
         });
 
-        // RENDERIZZAZIONE LOGICA CORE
-        function renderApp(data) {
+        function render(data) {
             const prenotazioni = Object.values(data);
-            
-            // Filtra solo le mie prenotazioni per il tab "Mie Prenotazioni"
-            const miePrenotazioni = prenotazioni.filter(p => p.utenteId === auth.currentUser.uid);
-            document.getElementById('count-pre').innerText = miePrenotazioni.length;
-            
-            // Aggiorna Stats
-            const occupati = prenotazioni.length;
-            document.getElementById('stat-pren').innerText = occupati;
-            document.getElementById('stat-disp').innerText = 16 - occupati;
-
-            // DISEGNA SEMPRE 16 TAVOLI
             const grid = document.getElementById('grid-tavoli');
             grid.innerHTML = '';
             
-            for (let i = 1; i <= 16; i++) {
-                const p = prenotazioni.find(item => item.tavolo == i);
+            for(let i=1; i<=16; i++) {
+                const p = prenotazioni.find(x => x.tavolo == i);
                 const div = document.createElement('div');
+                div.className = `tavolo-item aspect-square rounded-lg flex flex-col items-center justify-center ${p ? 'bg-red-500/20 border-red-500/50' : 'bg-white/5 hover:bg-white/10 cursor-pointer'}`;
+                if(!p) div.onclick = () => { selectedTavolo = i; document.getElementById('modal-title').innerText = 'TAVOLO ' + i; document.getElementById('modal-pren').classList.remove('hidden'); };
                 
-                // Stile se occupato o libero
-                if (p) {
-                    div.className = "tavolo-item p-4 rounded-xl border border-red-500/40 bg-red-500/10 flex flex-col items-center justify-center aspect-square occupato shadow-[inset_0_0_15px_rgba(239,68,68,0.1)]";
-                    div.innerHTML = `
-                        <span class="text-[8px] text-red-500 font-bold tracking-widest uppercase">Tavolo</span>
-                        <span class="text-2xl font-bold text-white">${i}</span>
-                        <div class="mt-2 flex flex-col items-center">
-                            <span class="text-[9px] text-white/90 font-bold">${p.orario}</span>
-                            <span class="text-[7px] text-gray-400 uppercase truncate max-w-[60px]">${p.nome}</span>
-                        </div>
-                    `;
-                } else {
-                    div.className = "tavolo-item p-4 rounded-xl border border-white/10 bg-white/5 flex flex-col items-center justify-center aspect-square cursor-pointer";
-                    div.onclick = () => openModal(i);
-                    div.innerHTML = `
-                        <span class="text-[8px] text-gray-500 font-bold tracking-widest uppercase">Tavolo</span>
-                        <span class="text-2xl font-bold text-white/40">${i}</span>
-                        <span class="text-[8px] text-red-500/50 font-bold uppercase mt-2">Libero</span>
-                    `;
-                }
+                div.innerHTML = `<span class="text-[8px] text-gray-500">TAV</span><span class="text-xl font-bold">${i}</span><span class="text-[7px] text-red-500">${p ? p.orario : 'LIBERO'}</span>`;
                 grid.appendChild(div);
             }
 
-            // LISTA MIE PRENOTAZIONI
+            const mie = prenotazioni.filter(x => x.utenteId === auth.currentUser.uid);
+            document.getElementById('count-pre').innerText = mie.length;
             const lista = document.getElementById('lista-prenotazioni');
-            lista.innerHTML = miePrenotazioni.length ? '' : '<div class="p-10 text-center border border-dashed border-white/10 rounded-xl text-gray-600 uppercase text-xs tracking-widest">Nessuna prenotazione effettuata da te</div>';
-            
-            miePrenotazioni.forEach(p => {
-                lista.innerHTML += `
-                    <div class="p-5 rounded-xl bg-white/5 border border-red-500/20 flex justify-between items-center animate-fade">
-                        <div>
-                            <p class="text-[10px] text-red-500 font-bold tracking-widest uppercase mb-1">Tavolo ${p.tavolo}</p>
-                            <p class="font-bold text-lg text-white">${p.nome}</p>
-                            <p class="text-xs text-gray-500 font-mono">Orario: ${p.orario}</p>
-                        </div>
-                        <button onclick="cancella('${p.id}')" class="p-3 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition">
-                            <i data-lucide="trash-2" class="w-5 h-5"></i>
-                        </button>
-                    </div>
-                `;
-            });
+            lista.innerHTML = mie.map(p => `
+                <div class="p-4 bg-white/5 border border-white/10 rounded-lg flex justify-between items-center">
+                    <div><p class="text-xs font-bold">Tavolo ${p.tavolo} - ${p.nome}</p><p class="text-[10px] text-gray-500">${p.orario}</p></div>
+                    <button onclick="cancella('${p.id}')" class="text-red-500 text-xs">ELIMINA</button>
+                </div>
+            `).join('');
             lucide.createIcons();
         }
 
-        // AZIONI UI
+        function submitPrenotazione() {
+            const nome = document.getElementById('p-nome').value;
+            const ora = document.getElementById('p-ora').value;
+            if(!nome || !ora) return alert("Inserisci nome e ora");
+
+            const id = Date.now();
+            console.log("Tentativo di prenotazione...");
+            
+            db.ref('prenotazioni/' + id).set({
+                id, tavolo: selectedTavolo, nome, orario: ora, utenteId: auth.currentUser.uid
+            })
+            .then(() => {
+                console.log("Successo!");
+                closeModal();
+                document.getElementById('p-nome').value = '';
+            })
+            .catch(error => {
+                console.error("Errore Firebase:", error);
+                alert("Errore durante la prenotazione: " + error.message);
+            });
+        }
+
+        function closeModal() { document.getElementById('modal-pren').classList.add('hidden'); }
         function switchTab(t) {
             document.getElementById('view-tavoli').classList.toggle('hidden', t !== 'tavoli');
             document.getElementById('view-prenotazioni').classList.toggle('hidden', t !== 'prenotazioni');
             document.getElementById('tab-tav').classList.toggle('active', t === 'tavoli');
             document.getElementById('tab-pre').classList.toggle('active', t === 'prenotazioni');
         }
-
-        function openModal(i) {
-            selectedTavolo = i;
-            document.getElementById('modal-title').innerText = `TAVOLO ${i}`;
-            document.getElementById('modal-pren').classList.remove('hidden');
-        }
-
-        function closeModal() { document.getElementById('modal-pren').classList.add('hidden'); }
-
-        function submitPrenotazione() {
-            const nome = document.getElementById('p-nome').value.trim();
-            const ora = document.getElementById('p-ora').value;
-            if (!nome || !ora) return alert("Per favore, inserisci nome e orario.");
-
-            const id = Date.now();
-            db.ref('prenotazioni/' + id).set({
-                id, 
-                tavolo: selectedTavolo, 
-                nome: nome, 
-                orario: ora, 
-                utenteId: auth.currentUser.uid,
-                timestamp: new Date().toISOString()
-            }).then(() => {
-                closeModal();
-                document.getElementById('p-nome').value = '';
-                document.getElementById('p-ora').value = '';
-            }).catch(e => alert("Errore nel salvataggio: " + e.message));
-        }
-
-        function cancella(id) {
-            if (confirm("Sei sicuro di voler cancellare questa prenotazione?")) {
-                db.ref('prenotazioni/' + id).remove();
-            }
-        }
-
+        function cancella(id) { if(confirm("Cancello?")) db.ref('prenotazioni/'+id).remove(); }
         function logout() { auth.signOut(); }
+        lucide.createIcons();
     </script>
 </body>
 </html>
