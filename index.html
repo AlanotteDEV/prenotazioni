@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manbaga - Prenotazione Tavoli</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+    <style>
+        body {
+            background-color: #050505;
+            color: #f5f5f5;
+            margin: 0;
+            font-family: sans-serif;
+        }
+
+        .grain {
+            background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" result="noise" /></filter><rect width="400" height="400" fill="%23050505" filter="url(%23noise)" opacity="0.03"/></svg>');
+            background-size: 200px 200px;
+        }
+
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .font-serif { font-family: 'Playfair Display', serif; }
+
+        @keyframes fadeInStagger {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.1), 0 0 0 1px rgba(239, 68, 68, 0.2); }
+            50% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.2), 0 0 0 1px rgba(239, 68, 68, 0.3); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tavolo-item { animation: fadeInStagger 0.6s ease-out forwards; opacity: 0; }
+        .tavolo-prenotato { animation: glowPulse 3s ease-in-out infinite; }
+        .form-modal { animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .success-message { animation: slideUp 0.3s ease-out; }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            font-size: 14px;
+            border-radius: 6px;
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(100, 100, 100, 0.2);
+            color: #f5f5f5;
+            font-family: 'JetBrains Mono', monospace;
+            box-sizing: border-box;
+            transition: all 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: rgba(239, 68, 68, 0.5);
+            background: rgba(20, 20, 20, 0.9);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #050505;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 12px 32px rgba(239, 68, 68, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(40, 40, 40, 0.6);
+            border: 1px solid rgba(100, 100, 100, 0.2);
+            color: #888;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover {
+            border-color: rgba(100, 100, 100, 0.4);
+            color: #f5f5f5;
+        }
+
+        .tab-btn { color: #888; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .tab-btn.active { color: #ef4444; border-bottom: 2px solid #ef4444; }
+
+        /* Hide elements by default */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="grain min-h-screen">
+
+    <div id="auth-screen" class="min-h-screen flex items-center justify-center p-5">
+        <div class="form-modal w-full max-w-[400px] p-10 rounded-xl" style="background: linear-gradient(135deg, rgba(5, 5, 5, 0.95) 0%, rgba(20, 20, 20, 0.8) 100%); border: 1px solid rgba(239, 68, 68, 0.2); backdrop-filter: blur(20px); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
+            <div class="text-center mb-8">
+                <div class="text-[42px] font-black italic tracking-tighter flex items-center justify-center mb-4">
+                    <span class="text-[#f5f5f5]">MAN</span><span class="text-red-500">B</span><span class="text-[#f5f5f5]">AGA</span>
+                </div>
+                <p id="auth-title" class="text-[#888] text-xs tracking-widest font-mono">ACCEDI</p>
+            </div>
+
+            <div id="auth-error" class="hidden mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded flex gap-2 items-center">
+                <i data-lucide="alert-circle" class="text-red-500 w-4 h-4"></i>
+                <span id="auth-error-text" class="text-red-500 text-xs"></span>
+            </div>
+
+            <div class="grid gap-4">
+                <div id="register-fields" class="hidden">
+                    <label class="block text-red-500 text-[10px] tracking-widest mb-2 font-mono font-medium">NOME</label>
+                    <input type="text" id="auth-nome" placeholder="Il tuo nome">
+                </div>
+
+                <div>
+                    <label class="block text-red-500 text-[10px] tracking-widest mb-2 font-mono font-medium">EMAIL</label>
+                    <input type="email" id="auth-email" placeholder="tuo@email.com">
+                </div>
+
+                <div>
+                    <label class="block text-red-500 text-[10px] tracking-widest mb-2 font-mono font-medium">PASSWORD</label>
+                    <input type="password" id="auth-password" placeholder="••••••••">
+                </div>
+
+                <button id="btn-auth-submit" class="btn-primary p-3 text-sm font-semibold rounded-md tracking-widest font-mono mt-2" onclick="handleAuthSubmit()">ACCEDI</button>
+
+                <button id="btn-toggle-auth" class="btn-secondary p-3 text-xs font-medium rounded-md tracking-wide font-mono" onclick="toggleAuthMode()">
+                    NON HAI UN ACCOUNT? REGISTRATI
+                </button>
+            </div>
+            
+            <div class="mt-6 p-3 rounded-md" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.15);">
+                <p class="text-[11px] text-[#888] leading-relaxed font-mono m-0">
+                    <strong>Nota:</strong> I dati sono salvati nel cloud di Firebase. Accedi da qualsiasi dispositivo!
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-screen" class="hidden relative">
+        <div class="fixed inset-0 pointer-events-none z-0" style="background: radial-gradient(ellipse 80% 80% at 50% 0%, rgba(239, 68, 68, 0.08) 0%, transparent 100%)"></div>
+
+        <div class="relative z-10 border-b border-[#1a1a1a] p-5" style="background: rgba(5, 5, 5, 0.8); backdrop-filter: blur(10px);">
+            <div class="max-w-6xl mx-auto flex justify-between items-center">
+                <div class="text-[28px] font-black italic tracking-tighter flex items-center">
+                    <span>MAN</span><span class="text-red-500">B</span><span>AGA</span>
+                </div>
+
+                <div class="flex-1 text-center">
+                    <div class="text-red-500 text-[11px] tracking-[3px] mb-2 font-mono">◆ 漫画 PRENOTAZIONI</div>
+                    <h1 class="font-serif text-[2rem] font-semibold tracking-tighter mb-1 text-[#f5f5f5]">TAVOLI</h1>
+                    <p class="text-[#888] text-[11px] tracking-widest font-mono m-0">FUMETTERIA MANBAGA</p>
+                </div>
+
+                <div class="text-right">
+                    <p id="user-name-display" class="text-red-500 text-xs font-mono font-medium mb-2"></p>
+                    <button onclick="handleLogout()" class="px-3 py-2 text-[11px] rounded-md flex items-center gap-2 font-mono font-medium transition-all duration-200 hover:bg-red-500/25 ml-auto" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444;">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i> ESCI
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="relative z-10 border-b border-[#1a1a1a]" style="background: rgba(5, 5, 5, 0.5); backdrop-filter: blur(10px);">
+            <div class="max-w-6xl mx-auto flex items-center gap-8 px-6 py-4">
+                <button onclick="switchTab('tavoli')" id="tab-tavoli" class="tab-btn active py-2 text-[13px] tracking-wide font-mono font-medium flex items-center gap-2">
+                    <i data-lucide="grid-3x3" class="w-4 h-4"></i> TAVOLI
+                </button>
+                <button onclick="switchTab('prenotazioni')" id="tab-prenotazioni" class="tab-btn py-2 text-[13px] tracking-wide font-mono font-medium flex items-center gap-2">
+                    <i data-lucide="list" class="w-4 h-4"></i> PRENOTAZIONI (<span id="prenotazioni-count">0</span>)
+                </button>
+            </div>
+        </div>
+
+        <div class="relative z-10 max-w-6xl mx-auto p-6">
+            
+            <div id="success-message" class="hidden mb-8 p-4 flex items-center gap-3 rounded-lg success-message" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); backdrop-filter: blur(10px);">
+                <i data-lucide="check" class="text-red-500 w-5 h-5 shrink-0"></i>
+                <span id="success-text" class="text-red-500 text-sm font-medium"></span>
+            </div>
+
+            <div id="view-tavoli">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                    <div class="p-6 rounded-lg shadow-xl" style="background: linear-gradient(135deg, rgba(10, 10, 10, 0.8) 0%, rgba(20, 20, 20, 0.6) 100%); border: 1px solid rgba(239, 68, 68, 0.2); backdrop-filter: blur(10px);">
+                        <div class="text-red-500 text-[11px] tracking-widest font-mono mb-2">DISPONIBILI</div>
+                        <div id="stat-disp" class="font-mono text-2xl font-semibold tracking-widest mb-2">16</div>
+                        <div class="h-[3px] bg-[#1a1a1a] rounded overflow-hidden"><div id="bar-disp" class="h-full bg-red-500 transition-all duration-600 w-full"></div></div>
+                    </div>
+                    <div class="p-6 rounded-lg shadow-xl" style="background: linear-gradient(135deg, rgba(10, 10, 10, 0.8) 0%, rgba(20, 20, 20, 0.6) 100%); border: 1px solid rgba(239, 68, 68, 0.15); backdrop-filter: blur(10px);">
+                        <div class="text-red-500 text-[11px] tracking-widest font-mono mb-2">PRENOTATI</div>
+                        <div id="stat-pren" class="font-mono text-2xl font-semibold tracking-widest mb-2">0</div>
+                        <div class="h-[3px] bg-[#1a1a1a] rounded overflow-hidden"><div id="bar-pren" class="h-full bg-red-500 transition-all duration-600 w-0"></div></div>
+                    </div>
+                    <div class="p-6 rounded-lg shadow-xl" style="background: linear-gradient(135deg, rgba(10, 10, 10, 0.8) 0%, rgba(20, 20, 20, 0.6) 100%); border: 1px solid rgba(239, 68, 68, 0.2); backdrop-filter: blur(10px);">
+                        <div class="text-red-500 text-[11px] tracking-widest font-mono mb-2">MAX PERSONE</div>
+                        <div class="font-mono text-2xl font-semibold tracking-widest">2</div>
+                        <p class="text-[#666] text-[11px] mt-2">Per tavolo</p>
+                    </div>
+                </div>
+
+                <div class="mb-16">
+                    <h2 class="text-[#f5f5f5] text-[18px] tracking-widest font-mono font-medium mb-6">16 TAVOLI DISPONIBILI</h2>
+                    <div id="grid-tavoli" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 12px;">
+                        </div>
+                </div>
+            </div>
+
+            <div id="view-prenotazioni" class="hidden mb-16">
+                <h2 class="text-[#f5f5f5] text-[18px] tracking-widest font-mono font-medium mb-6">TUTTE LE PRENOTAZIONI</h2>
+                
+                <div id="empty-prenotazioni" class="hidden p-12 text-center rounded-lg" style="background: rgba(10, 10, 10, 0.6); border: 1px solid rgba(239, 68, 68, 0.15); backdrop-filter: blur(10px);">
+                    <p class="text-[#888] text-sm tracking-wide font-mono">NESSUNA PRENOTAZIONE AL MOMENTO</p>
+                </div>
+
+                <div id="list-prenotazioni" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px;">
+                    </div>
+            </div>
+
+        </div>
+
+        <div class="relative z-10 border-t border-[#1a1a1a] mt-20">
+            <div class="max-w-6xl mx-auto py-12 px-5 text-center">
+                <p class="text-red-500 text-[11px] tracking-widest font-mono mb-2">◆ 漫 MANBAGA COMICS & GAMES ◆</p>
+                <p class="text-[#666] text-xs tracking-wide">Via Padre Reginaldo Giuliani, 21 • Canosa di Puglia (BT)</p>
+                <p class="text-[#555] text-[10px] mt-3 font-mono">© 2025 • Progettato con passione per i fan</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="form-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px);">
+        <div class="form-modal w-full max-w-[420px] p-8 rounded-xl" style="background: linear-gradient(135deg, rgba(5, 5, 5, 0.95) 0%, rgba(20, 20, 20, 0.8) 100%); border: 1px solid rgba(239, 68, 68, 0.2); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
+            <div class="flex justify-between items-start mb-8">
+                <div>
+                    <h2 id="modal-title" class="font-serif text-[2rem] text-[#f5f5f5] mb-2">TAVOLO X</h2>
+                    <p class="text-red-500 text-[11px] tracking-widest font-mono">NUOVA PRENOTAZIONE</p>
+                </div>
+                <button onclick="closeModal()" class="p-2 bg-white/5 border-none rounded-md text-[#888] cursor-pointer hover:bg-white/10 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="grid gap-5">
+                <div>
+                    <label class="block text-red-500 text-[10px] tracking-widest mb-2 font-mono font-medium">NOME PERSONA</label>
+                    <input type="text" id="form-nome" placeholder="Scrivi il tuo nome">
+                </div>
+                <div>
+                    <label class="block text-red-500 text-[10px] tracking-widest mb-2 font-mono font-medium">ORARIO DI ARRIVO</label>
+                    <input type="time" id="form-orario">
+                </div>
+                <div>
+                    <label class="block text-red-500 text-[10px] tracking-widest mb-2 font-mono font-medium">NUMERO PERSONE</label>
+                    <select id="form-persone">
+                        <option value="1">1 Persona</option>
+                        <option value="2">2 Persone (Massimo)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-red-500 text-[10px] tracking-widest mb-2 font-mono font-medium">NOTE SPECIALI (Opzionale)</label>
+                    <textarea id="form-note" placeholder="Allergie, preferenze..." rows="3" style="resize: none;"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 pt-3">
+                    <button onclick="closeModal()" class="btn-secondary p-3 text-xs font-medium rounded-md tracking-wide font-mono">ANNULLA</button>
+                    <button onclick="submitPrenotazione()" class="btn-primary p-3 text-xs font-medium rounded-md tracking-wide font-mono">CONFERMA</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === CONFIGURAZIONE FIREBASE ===
+        const firebaseConfig = {
+            apiKey: "AIzaSyCG0-J2wxZGSz6eDh_E-aAe2uvpTGLmXz0",
+            authDomain: "prenotazioninegozio-65eb1.firebaseapp.com",
+            projectId: "prenotazioninegozio-65eb1",
+            storageBucket: "prenotazioninegozio-65eb1.firebasestorage.app",
+            messagingSenderId: "466874129336",
+            appId: "1:466874129336:web:fd07925523c35921fe8d4d"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
+
+        // === STATO GLOBALE ===
+        let utenteLoggato = null;
+        let isRegistrazione = false;
+        let activeTab = 'tavoli';
+        let tavoloSelezionato = null;
+        let prenotazioniList = [];
+        let tavoliList = Array(16).fill(null).map((_, i) => ({ id: i + 1, disponibile: true, prenotazione: null }));
+
+        // Inizializza le icone
+        lucide.createIcons();
+
+        // === FUNZIONI DI UTILITÀ (DOM) ===
+        const el = id => document.getElementById(id);
+        
+        function showError(msg) {
+            el('auth-error').classList.remove('hidden');
+            el('auth-error-text').innerText = msg;
+        }
+
+        // === AUTENTICAZIONE ===
+        function toggleAuthMode() {
+            isRegistrazione = !isRegistrazione;
+            el('auth-error').classList.add('hidden');
+            el('register-fields').classList.toggle('hidden', !isRegistrazione);
+            el('auth-title').innerText = isRegistrazione ? 'CREA ACCOUNT' : 'ACCEDI';
+            el('btn-auth-submit').innerText = isRegistrazione ? 'REGISTRATI' : 'ACCEDI';
+            el('btn-toggle-auth').innerText = isRegistrazione ? 'HAI GIÀ UN ACCOUNT? ACCEDI' : 'NON HAI UN ACCOUNT? REGISTRATI';
+        }
+
+        function handleAuthSubmit() {
+            const email = el('auth-email').value;
+            const pass = el('auth-password').value;
+            const nome = el('auth-nome').value;
+
+            if (isRegistrazione) {
+                if(!email || !pass || !nome) return showError("Compila tutti i campi");
+                auth.createUserWithEmailAndPassword(email, pass)
+                    .then((userCredential) => {
+                        db.ref('utenti/' + userCredential.user.uid).set({ nome, email });
+                    })
+                    .catch((error) => showError(error.code === 'auth/email-already-in-use' ? 'Email già registrata' : error.message));
+            } else {
+                if(!email || !pass) return showError("Compila email e password");
+                auth.signInWithEmailAndPassword(email, pass)
+                    .catch((error) => showError('Email o password non corretti'));
+            }
+        }
+
+        function handleLogout() {
+            auth.signOut();
+        }
+
+        // Listener cambiamenti Auth
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                db.ref('utenti/' + user.uid).once('value', (snapshot) => {
+                    const userData = snapshot.val();
+                    if(userData) {
+                        utenteLoggato = { id: user.uid, ...userData };
+                        el('auth-screen').classList.add('hidden');
+                        el('app-screen').classList.remove('hidden');
+                        el('user-name-display').innerText = utenteLoggato.nome;
+                    }
+                });
+            } else {
+                utenteLoggato = null;
+                el('auth-screen').classList.remove('hidden');
+                el('app-screen').classList.add('hidden');
+                el('auth-email').value = ''; el('auth-password').value = ''; el('auth-nome').value = '';
+            }
+        });
+
+        // === GESTIONE DATI FIREBASE (PRENOTAZIONI) ===
+        db.ref('prenotazioni').on('value', (snapshot) => {
+            const data = snapshot.val();
+            prenotazioniList = data ? Object.values(data) : [];
+            
+            // Aggiorna stato tavoli
+            tavoliList = Array(16).fill(null).map((_, i) => {
+                const id = i + 1;
+                const pren = prenotazioniList.find(p => p.tavolo === id);
+                return pren ? 
+                    { id, disponibile: false, prenotazione: pren } : 
+                    { id, disponibile: true, prenotazione: null };
+            });
+
+            renderApp();
+        });
+
+        // === RENDERIZZAZIONE INTERFACCIA ===
+        function switchTab(tab) {
+            activeTab = tab;
+            el('tab-tavoli').classList.toggle('active', tab === 'tavoli');
+            el('tab-prenotazioni').classList.toggle('active', tab === 'prenotazioni');
+            el('view-tavoli').classList.toggle('hidden', tab !== 'tavoli');
+            el('view-prenotazioni').classList.toggle('hidden', tab !== 'prenotazioni');
+        }
+
+        function renderApp() {
+            el('prenotazioni-count').innerText = prenotazioniList.length;
+
+            // Stats Tavoli
+            const disp = tavoliList.filter(t => t.disponibile).length;
+            const percDisp = Math.round((disp / 16) * 100);
+            el('stat-disp').innerText = disp;
+            el('stat-pren').innerText = 16 - disp;
+            el('bar-disp').style.width = `${percDisp}%`;
+            el('bar-pren').style.width = `${100 - percDisp}%`;
+
+            // Griglia Tavoli
+            el('grid-tavoli').innerHTML = tavoliList.map((tavolo, i) => `
+                <div class="tavolo-item" style="animation-delay: ${i * 0.05}s">
+                    <button onclick="openModal(${tavolo.id}, ${tavolo.disponibile})" 
+                            ${!tavolo.disponibile ? 'disabled' : ''}
+                            class="w-full relative ${tavolo.disponibile ? 'cursor-pointer' : 'cursor-default'} border-none p-0 bg-transparent">
+                        
+                        <div class="${tavolo.disponibile ? '' : 'tavolo-prenotato'} aspect-square flex items-center justify-center relative overflow-hidden rounded-lg transition-all duration-300"
+                             style="background: ${tavolo.disponibile ? 'linear-gradient(135deg, rgba(30,30,30,0.9) 0%, rgba(40,40,40,0.6) 100%)' : 'linear-gradient(135deg, rgba(40,15,15,0.8) 0%, rgba(38,19,19,0.6) 100%)'};
+                                    border: ${tavolo.disponibile ? '1px solid rgba(100,100,100,0.3)' : '2px solid rgba(239,68,68,0.6)'};
+                                    backdrop-filter: blur(10px);
+                                    box-shadow: ${tavolo.disponibile ? '0 8px 24px rgba(0,0,0,0.2)' : 'inset 0 0 20px rgba(239,68,68,0.1)'}">
+                            
+                            <div class="relative z-10 text-center">
+                                <div class="text-red-500 text-[9px] tracking-widest font-mono mb-1">TABLE</div>
+                                <div class="font-mono text-[#f5f5f5] text-2xl font-semibold mb-1">${tavolo.id}</div>
+                                
+                                ${tavolo.disponibile ? 
+                                    `<div class="text-[#666] text-[8px] tracking-[0.5px] font-mono">PRENOTA</div>` 
+                                    : 
+                                    `<div class="flex flex-col items-center gap-0.5">
+                                        <div class="flex items-center justify-center gap-1">
+                                            <div class="w-1 h-1 rounded-full bg-red-500"></div>
+                                            <span class="text-red-500 text-[8px] font-mono font-medium">${tavolo.prenotazione.persone}P</span>
+                                        </div>
+                                        <div class="text-[#888] text-[7px] font-mono">${tavolo.prenotazione.orario}</div>
+                                    </div>`
+                                }
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            `).join('');
+
+            // Lista Prenotazioni
+            if (prenotazioniList.length === 0) {
+                el('empty-prenotazioni').classList.remove('hidden');
+                el('list-prenotazioni').classList.add('hidden');
+            } else {
+                el('empty-prenotazioni').classList.add('hidden');
+                el('list-prenotazioni').classList.remove('hidden');
+                
+                el('list-prenotazioni').innerHTML = prenotazioniList.map((p, i) => {
+                    const isMia = utenteLoggato && p.utenteId === utenteLoggato.id;
+                    return `
+                        <div class="p-4 rounded-lg flex justify-between items-start gap-3" 
+                             style="background: linear-gradient(135deg, rgba(10,10,10,0.8) 0%, rgba(20,20,20,0.6) 100%);
+                                    border: 1px solid ${isMia ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.15)'};
+                                    box-shadow: ${isMia ? '0 8px 24px rgba(239,68,68,0.15)' : '0 8px 24px rgba(0,0,0,0.2)'};
+                                    backdrop-filter: blur(10px); animation: fadeInStagger 0.4s ease-out forwards; animation-delay: ${i*0.05}s">
+                            
+                            <div class="flex-1">
+                                <div class="text-[#f5f5f5] text-base font-medium mb-1">${p.nome}</div>
+                                <div class="text-red-500 text-[13px] font-mono font-semibold mb-2">${p.orario}</div>
+                                <div class="text-[#888] text-[11px] font-mono">
+                                    di <span class="text-[#aaa] font-medium">${p.utenteNome}</span>
+                                    ${isMia ? '<span class="text-red-500 ml-2">• TUA</span>' : ''}
+                                </div>
+                            </div>
+
+                            ${isMia ? `
+                                <button onclick="cancellaPrenotazione('${p.id}')" class="p-2 rounded-md shrink-0 flex items-center transition-all duration-200 hover:bg-red-500/25"
+                                        style="background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #ef4444;">
+                                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+                lucide.createIcons(); // Ricarica le icone nella lista
+            }
+        }
+
+        // === LOGICA PRENOTAZIONE ===
+        function openModal(id, disponibile) {
+            if (!disponibile) return;
+            tavoloSelezionato = id;
+            el('modal-title').innerText = `TAVOLO ${id}`;
+            el('form-nome').value = '';
+            el('form-orario').value = '';
+            el('form-persone').value = '1';
+            el('form-note').value = '';
+            el('form-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            el('form-modal').classList.add('hidden');
+            tavoloSelezionato = null;
+        }
+
+        function submitPrenotazione() {
+            const nome = el('form-nome').value.trim();
+            const orario = el('form-orario').value;
+            
+            if (!nome || !orario) return alert('Compila nome e orario');
+            if (!utenteLoggato) return;
+
+            const prenotazioneId = Date.now().toString();
+            const prenotazione = {
+                id: prenotazioneId,
+                tavolo: tavoloSelezionato,
+                utenteId: utenteLoggato.id,
+                utenteNome: utenteLoggato.nome,
+                nome: nome,
+                orario: orario,
+                persone: el('form-persone').value,
+                note: el('form-note').value,
+                timestamp: new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+            };
+
+            db.ref('prenotazioni/' + prenotazioneId).set(prenotazione).then(() => {
+                closeModal();
+                el('success-text').innerText = `✓ Tavolo ${tavoloSelezionato} prenotato per ${nome}`;
+                el('success-message').classList.remove('hidden');
+                setTimeout(() => el('success-message').classList.add('hidden'), 4000);
+            });
+        }
+
+        function cancellaPrenotazione(id) {
+            if(confirm('Vuoi davvero cancellare questa prenotazione?')) {
+                db.ref('prenotazioni/' + id).remove();
+            }
+        }
+
+    </script>
+</body>
+</html>
